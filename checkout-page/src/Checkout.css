@@ -1,12 +1,23 @@
-.checkout-container {
-  max-width: 400px;
-  margin: 50px auto;
-  padding: 2rem;
-  border-radius: 12px;
-  box-shadow: 0 10px 25px rgba(0,0,0,0.1);
-  font-family: 'Inter', system-ui, sans-serif;
-  background: white;
+/* Center everything on the page */
+#root, body {
+  display: flex;
+  justify-content: center; /* Horizontal center */
+  align-items: center;     /* Vertical center */
+  min-height: 100vh;
+  margin: 0;
+  background-color: #f8fafc; /* Light gray background */
 }
+
+ .checkout-container {
+  width: 100%;
+  max-width: 420px;
+  background: white;
+  padding: 2.5rem;
+  border-radius: 16px;
+  box-shadow: 0 20px 40px rgba(0,0,0,0.08);
+  /* Remove margin: 50px auto; if you used the #root fix above */
+}
+
 /* Add this to your existing styles or replace the file */
 .checkout-container {
   max-width: 420px;
@@ -169,4 +180,12 @@ input:focus {
 .success-icon {
   font-size: 4rem;
   margin-bottom: 1rem;
+}
+
+@media (max-width: 480px) {
+  .checkout-container {
+    margin: 10px;
+    padding: 1.5rem;
+    max-width: none;
+  }
 }

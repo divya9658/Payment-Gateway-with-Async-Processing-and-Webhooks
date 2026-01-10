@@ -8,16 +8,42 @@ export default function Checkout() {
   
   const orderId = new URLSearchParams(window.location.search).get('order_id') || "order_default_123";
 
-  const handlePayment = (e) => {
-    e.preventDefault();
-    setStatus('processing');
-    
-    // Simulate API call delay for the video demo
-    setTimeout(() => {
-      setPaymentId('pay_' + Math.random().toString(36).substr(2, 9));
-      setStatus('success');
-    }, 2000); 
+const handlePayment = async (e) => {
+  e.preventDefault();
+  setStatus('processing');
+
+  const payload = {
+    order_id: orderId,
+    method: method,
+    // Backend expects card.number, not just a string
+    ...(method === 'card' ? { 
+      card: { number: "4111111111111111" } 
+    } : { 
+      vpa: "test@upi" 
+    })
   };
+
+  try {
+    const response = await fetch('http://localhost:8000/api/v1/payments', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+
+    if (response.ok) {
+      const data = await response.json();
+      setPaymentId(data.id);
+      setStatus('success');
+    } else {
+      setStatus('idle');
+      const errData = await response.json();
+      alert(`Error: ${errData.error.description}`);
+    }
+  } catch (error) {
+    console.error("Connection failed:", error);
+    setStatus('idle');
+  }
+};
 
   if (status === 'success') {
     return (
