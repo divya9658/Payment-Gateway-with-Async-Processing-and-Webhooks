@@ -1,0 +1,112 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: gateway_postgres
+    environment:
+      POSTGRES_USER: gateway_user
+      POSTGRES_PASSWORD: gateway_password
+      POSTGRES_DB: payment_gateway
+    ports:
+      - "5432:5432"
+    volumes:
+      - ./database/init.sql:/docker-entrypoint-initdb.d/init.sql
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U gateway_user -d payment_gateway"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: gateway_redis
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  api:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: gateway_api
+    command: npm run start:api
+    ports:
+      - "8000:8000"
+    environment:
+      NODE_ENV: development
+      PORT: 8000
+      DATABASE_URL: postgres://gateway_user:gateway_password@postgres:5432/payment_gateway
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      WEBHOOK_RETRY_INTERVALS_TEST: "true"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./backend:/app
+      - /app/node_modules
+
+  worker:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: gateway_worker
+    command: npm run start:worker
+    environment:
+      NODE_ENV: development
+      DATABASE_URL: postgres://gateway_user:gateway_password@postgres:5432/payment_gateway
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      TEST_MODE: "true"
+      WEBHOOK_RETRY_INTERVALS_TEST: "true"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      api:
+        condition: service_started
+    volumes:
+      - ./backend:/app
+      - /app/node_modules
+
+  dashboard:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: gateway_dashboard
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+
+  checkout:
+    build:
+      context: ./checkout-widget
+      dockerfile: Dockerfile
+    container_name: gateway_checkout
+    ports:
+      - "3001:3001"
+    volumes:
+      - ./checkout-widget:/app
+      - /app/node_modules
+  
+  test-merchant:
+    build:
+      context: ./test-merchant
+      dockerfile: Dockerfile
+    container_name: gateway_test_merchant
+    ports:
+      - "4000:4000"
+
+volumes:
+  postgres_data:
